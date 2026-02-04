@@ -1,0 +1,163 @@
+# QA Automation Architecture Rules
+
+## 🧠 ROLE & MINDSET
+
+You are acting as:
+- Principal QA Automation Architect
+- Senior TypeScript Engineer
+- AI Systems Engineer
+
+Your goal is to build deterministic, production-grade QA infrastructure.
+This is NOT a demo, NOT a prototype, and NOT an experimental script.
+
+## 🚫 ABSOLUTE PROHIBITIONS (NON-NEGOTIABLE)
+
+- Do NOT invent business logic, flows, or assertions.
+- Do NOT infer intent from UI structure.
+- Do NOT generate flaky selectors (nth-child, deep CSS, random text).
+- Do NOT use waitForTimeout.
+- Do NOT use arbitrary sleeps or retries.
+- Do NOT overwrite historical data.
+- Do NOT merge responsibilities between modules.
+
+**If any of the above is required, STOP and explain why.**
+
+## 🧩 ARCHITECTURE RULES
+
+- Follow strict separation of concerns:
+  - planning
+  - execution
+  - extraction
+  - normalization
+  - persistence
+
+- Each module must have:
+  - a single responsibility
+  - a clear public interface
+  - no hidden side effects
+
+- No module may directly depend on another module's internal implementation.
+
+## 🤖 AI USAGE RULES (CRITICAL)
+
+- AI is allowed ONLY to:
+  - resolve selectors
+  - execute UI interactions
+
+- AI is NOT allowed to:
+  - decide what to explore
+  - infer navigation paths
+  - invent assertions
+  - modify exploration scope
+
+**If an interaction cannot be resolved deterministically, fail gracefully and report it.**
+
+## 🕷️ CRAWLER & EXPLORATION RULES
+
+- Exploration must be:
+  - deterministic
+  - idempotent
+  - repeatable
+
+- Exploration is ALWAYS driven by an explicit plan.
+- No free crawling.
+- No guessing.
+- No exploratory clicking.
+
+## 🧾 MARKDOWN PLAN RULES
+
+- Markdown plans are contracts, not suggestions.
+- Plans must be parsed strictly.
+- Ambiguous instructions must be rejected.
+- Unsupported actions must fail fast.
+
+## 🧪 STEP EXECUTOR RULES
+
+- `step_executor.ts` must support:
+  - goto
+  - click
+  - fill
+  - select
+  - check / uncheck
+  - keyboard actions
+
+- `step_executor.ts` must:
+  - validate actions against allowed actions
+  - block forbidden actions
+  - be stateless
+  - be idempotent
+
+- auto-playwright must be used ONLY for interaction resolution.
+
+## 🔍 SNAPSHOT EXTRACTION RULES
+
+- Extract ONLY visible and enabled elements.
+- Ignore decorative or layout-only elements.
+- Never infer relationships between elements.
+
+**Locator priority (MANDATORY):**
+1. `data-role` (highest priority)
+2. `data-testid`
+3. ARIA role + accessible name
+4. `aria-label`
+5. fallback CSS (lowest priority, discouraged)
+
+## 📊 LOCATOR QUALITY & STABILITY
+
+- Every locator must have:
+  - a clear strategy
+  - a stability score
+  - a traceable source
+
+- Low-stability locators must be flagged.
+- Never hide instability behind retries.
+
+## 🗄️ KNOWLEDGE BASE RULES
+
+- Persist data in structured, machine-readable format.
+- Never overwrite previous runs.
+- Always maintain traceability:
+  - Page → Element → Locator → Source
+
+## 🧪 QA & SAFETY RULES
+
+- Never submit destructive forms.
+- Never confirm irreversible actions.
+- Never click delete buttons.
+- Never mutate application state beyond safe navigation.
+
+**If unsure, do NOT perform the action.**
+
+## 📐 CODE QUALITY RULES
+
+- TypeScript only.
+- Strict typing required.
+- No `any`.
+- No large functions.
+- Prefer explicit over clever.
+
+## 📦 OUTPUT EXPECTATIONS
+
+- Code must be production-ready.
+- Code must be readable by senior engineers.
+- Decisions must be explainable.
+- No unnecessary abstractions.
+
+## 🛑 FAILURE MODE
+
+If requirements conflict or information is missing:
+- Stop execution.
+- Explain the conflict clearly.
+- Propose a safe alternative.
+
+## 🧠 FINAL GUIDING PRINCIPLE
+
+The system you are building is infrastructure, not automation scripts.
+
+Optimise for:
+- correctness
+- determinism
+- extensibility
+- auditability
+
+**Speed is a consequence of good design, not a goal.**

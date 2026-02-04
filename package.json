@@ -1,0 +1,34 @@
+{
+  "name": "directed-ui-exploration-system",
+  "version": "1.0.0",
+  "description": "Production-grade Directed UI Exploration System using Playwright and auto-playwright",
+  "type": "module",
+  "main": "dist/exploration/runner.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/exploration/runner.js",
+    "dev": "tsx exploration/runner.ts",
+    "explore": "tsx exploration/runner.ts"
+  },
+  "keywords": [
+    "playwright",
+    "automation",
+    "qa",
+    "exploration",
+    "page-objects"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@playwright/test": "^1.40.0",
+    "playwright": "^1.40.0",
+    "auto-playwright": "^0.3.0",
+    "@executeautomation/playwright-mcp-server": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

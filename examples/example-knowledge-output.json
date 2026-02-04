@@ -1,0 +1,167 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "planName": "Example Application Exploration",
+    "planVersion": "1.0.0"
+  },
+  "runId": "run-1705315800000-abc123",
+  "pages": [
+    {
+      "url": "https://example.com/login",
+      "title": "Login - Example Application",
+      "extractedAt": "2024-01-15T10:30:15.000Z",
+      "sourceStepId": "step-0",
+      "elements": [
+        {
+          "elementId": "element-0-0",
+          "extractedAt": "2024-01-15T10:30:15.500Z",
+          "raw": {
+            "tag": "input",
+            "role": "textbox",
+            "dataRole": "username-field",
+            "dataTestId": "username-input",
+            "ariaLabel": "Username",
+            "accessibleName": "Username",
+            "textContent": null,
+            "inputType": "text",
+            "isVisible": true,
+            "isEnabled": true,
+            "boundingBox": {
+              "x": 100,
+              "y": 200,
+              "width": 300,
+              "height": 40
+            }
+          },
+          "locators": [
+            {
+              "strategy": "data-role",
+              "expression": "getByTestId('username-field').or(page.locator('[data-role=\"username-field\"]'))",
+              "stabilityScore": 100,
+              "description": "data-role=\"username-field\"",
+              "isLowStability": false
+            },
+            {
+              "strategy": "data-testid",
+              "expression": "getByTestId('username-input')",
+              "stabilityScore": 90,
+              "description": "data-testid=\"username-input\"",
+              "isLowStability": false
+            },
+            {
+              "strategy": "role-accessible-name",
+              "expression": "getByRole('textbox', { name: 'Username' })",
+              "stabilityScore": 80,
+              "description": "role=\"textbox\" with accessible name \"Username\"",
+              "isLowStability": false
+            },
+            {
+              "strategy": "aria-label",
+              "expression": "getByLabel('Username')",
+              "stabilityScore": 70,
+              "description": "aria-label=\"Username\"",
+              "isLowStability": false
+            }
+          ]
+        },
+        {
+          "elementId": "element-0-1",
+          "extractedAt": "2024-01-15T10:30:15.600Z",
+          "raw": {
+            "tag": "button",
+            "role": "button",
+            "dataRole": "login-button",
+            "dataTestId": "login-btn",
+            "ariaLabel": null,
+            "accessibleName": "Login",
+            "textContent": "Login",
+            "isVisible": true,
+            "isEnabled": true,
+            "boundingBox": {
+              "x": 100,
+              "y": 300,
+              "width": 150,
+              "height": 45
+            }
+          },
+          "locators": [
+            {
+              "strategy": "data-role",
+              "expression": "getByTestId('login-button').or(page.locator('[data-role=\"login-button\"]'))",
+              "stabilityScore": 100,
+              "description": "data-role=\"login-button\"",
+              "isLowStability": false
+            },
+            {
+              "strategy": "data-testid",
+              "expression": "getByTestId('login-btn')",
+              "stabilityScore": 90,
+              "description": "data-testid=\"login-btn\"",
+              "isLowStability": false
+            },
+            {
+              "strategy": "role-accessible-name",
+              "expression": "getByRole('button', { name: 'Login' })",
+              "stabilityScore": 80,
+              "description": "role=\"button\" with accessible name \"Login\"",
+              "isLowStability": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "url": "https://example.com/dashboard",
+      "title": "Dashboard - Example Application",
+      "extractedAt": "2024-01-15T10:30:45.000Z",
+      "sourceStepId": "step-5",
+      "elements": [
+        {
+          "elementId": "element-5-0",
+          "extractedAt": "2024-01-15T10:30:45.500Z",
+          "raw": {
+            "tag": "a",
+            "role": "link",
+            "dataRole": "dashboard-link",
+            "dataTestId": "nav-dashboard",
+            "ariaLabel": null,
+            "accessibleName": "Dashboard",
+            "textContent": "Dashboard",
+            "isVisible": true,
+            "isEnabled": true,
+            "boundingBox": {
+              "x": 50,
+              "y": 50,
+              "width": 120,
+              "height": 30
+            }
+          },
+          "locators": [
+            {
+              "strategy": "data-role",
+              "expression": "getByTestId('dashboard-link').or(page.locator('[data-role=\"dashboard-link\"]'))",
+              "stabilityScore": 100,
+              "description": "data-role=\"dashboard-link\"",
+              "isLowStability": false
+            },
+            {
+              "strategy": "data-testid",
+              "expression": "getByTestId('nav-dashboard')",
+              "stabilityScore": 90,
+              "description": "data-testid=\"nav-dashboard\"",
+              "isLowStability": false
+            },
+            {
+              "strategy": "role-accessible-name",
+              "expression": "getByRole('link', { name: 'Dashboard' })",
+              "stabilityScore": 80,
+              "description": "role=\"link\" with accessible name \"Dashboard\"",
+              "isLowStability": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
