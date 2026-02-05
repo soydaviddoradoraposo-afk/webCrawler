@@ -66,6 +66,7 @@ export async function runExploration(
   let browser: Browser | null = null;
   let context: BrowserContext | null = null;
   let page: Page | null = null;
+  let mcpClient: MCPClient | undefined;
 
   try {
     // Load and parse plan
@@ -95,7 +96,6 @@ export async function runExploration(
     page.setDefaultTimeout(finalConfig.pageLoadTimeout);
 
     // Initialize MCP client if enabled
-    let mcpClient: MCPClient | undefined;
     if (finalConfig.mcpEnabled && finalConfig.mcpConfig) {
       console.log(`[Runner] Initializing MCP client (${finalConfig.mcpConfig.transport} mode)...`);
       try {
