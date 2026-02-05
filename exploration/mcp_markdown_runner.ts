@@ -210,7 +210,7 @@ async function executePrompt(
         if (mcpAction.success && mcpAction.parsedAction) {
           step = {
             id: `markdown-line-${lineNumber}`,
-            action: mcpAction.parsedAction.action,
+            action: mcpAction.parsedAction.action as ActionType,
             target: mcpAction.parsedAction.target,
             value: mcpAction.parsedAction.value,
             description: prompt,

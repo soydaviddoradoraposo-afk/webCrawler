@@ -70,7 +70,13 @@ npm run explore flows/login.md --markdown-flow --mcp-enabled=true --mcp-port=893
 npm run explore flows/login.md --markdown-flow
 ```
 
-**Ver [docs/comandos-ejecucion.md](docs/comandos-ejecucion.md) para documentación completa de comandos.**
+### Sistema 4: Explore from test (test como punto de entrada)
+```bash
+npm run explore-from-test -- e2e/login.spec.ts
+# Con MCP: npm run explore-from-test -- e2e/login.spec.ts --mcp-enabled=true --mcp-port=8931
+```
+
+**Ver [docs/comandos-ejecucion.md](docs/comandos-ejecucion.md) para documentación completa de comandos (incluye grabación avanzada, API traffic y post-procesamiento).**
 
 ## Usage
 

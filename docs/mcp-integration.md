@@ -170,10 +170,11 @@ All tools from `@executeautomation/playwright-mcp-server` are integrated. Use th
 #### Recording (code generation)
 | Method | Description |
 |--------|-------------|
-| `startCodegenSession(options)` | Start recording session (outputPath, testNamePrefix?, includeComments?) |
+| `startCodegenSession(options)` | Start recording session (outputPath, testNamePrefix?, includeComments?). API traffic capture is automatic (only allowed domains: qa.cakehr.biz, cakehr.dev.sageone.com; override with `MCP_API_TRAFFIC_ALLOWED_DOMAINS`). |
 | `endCodegenSession(sessionId)` | End session and generate test file |
-| `getCodegenSession(sessionId)` | Get session info |
+| `getCodegenSession(sessionId)` | Get session info (includes actions and apiTraffic) |
 | `clearCodegenSession(sessionId)` | Clear session without generating |
+| `exportCodegenSessionJson(sessionId, outputPath?)` | Export session as flow JSON (steps + apiTraffic). If outputPath is provided, writes `flow-{sessionId}-{timestamp}.json` there. Never overwrites. |
 
 **Crawler fallback:** Actions such as `api_*`, codegen, `expect_response`, `assert_response`, `custom_user_agent`, and `console_logs` have no crawler implementation; use MCP or omit those steps when running without MCP.
 

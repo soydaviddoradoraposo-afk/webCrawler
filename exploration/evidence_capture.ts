@@ -103,7 +103,8 @@ export async function captureConsoleLogs(page: Page): Promise<ConsoleLogEntry[]>
  */
 export async function captureAccessibilityTree(page: Page): Promise<any> {
   try {
-    return await page.accessibility.snapshot();
+    const pageWithA11y = page as unknown as { accessibility(): { snapshot(): Promise<unknown> } };
+return await pageWithA11y.accessibility().snapshot();
   } catch (error) {
     throw new Error(`Failed to capture accessibility tree: ${error instanceof Error ? error.message : String(error)}`);
   }

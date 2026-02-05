@@ -118,6 +118,51 @@ npm run explore flows/ecommerce-checkout.md --markdown-flow --mcp-enabled=true -
 
 ---
 
+## Sistema 4: Explore from test (test como punto de entrada)
+
+Ejecuta exploración tomando un archivo de test Playwright (`.spec.ts`) como plan: parsea los pasos (goto, click, fill, select, hover), los ejecuta y extrae snapshots y locators que se incorporan al modelo canónico.
+
+### Comando básico:
+```bash
+npm run explore-from-test -- e2e/login.spec.ts
+```
+
+### Con opciones:
+```bash
+# Modo visible
+npm run explore-from-test -- e2e/login.spec.ts --headless=false
+
+# Directorio de salida
+npm run explore-from-test -- e2e/login.spec.ts --output-dir=./knowledge
+
+# Con MCP
+npm run explore-from-test -- e2e/login.spec.ts --mcp-enabled=true --mcp-port=8931
+```
+
+### Uso con runner directo:
+```bash
+tsx exploration/runner.ts --explore-from-test e2e/login.spec.ts
+```
+
+---
+
+## Grabación avanzada (MCP Codegen + API + modelo canónico)
+
+**Toggle de grabación:** No hay hotkey en el MCP; el inicio/fin de grabación se controla con las herramientas de codegen:
+- `start_codegen_session` — inicia la sesión (y la captura de tráfico API en dominios permitidos).
+- `end_codegen_session` — termina la sesión y genera el test Playwright.
+- `export_codegen_session_json` — exporta la sesión como flow JSON (pasos + apiTraffic) sin generar test; opcionalmente escribe en un directorio (`outputPath`).
+
+**Captura de API:** Durante una sesión activa se graba automáticamente el tráfico HTTP solo de los dominios permitidos (por defecto: `qa.cakehr.biz`, `cakehr.dev.sageone.com`). Configurable con `MCP_API_TRAFFIC_ALLOWED_DOMAINS` (lista separada por comas).
+
+**Post-procesamiento (en crawlerPW):**
+1. Cargar flow JSON (desde export o desde `get_codegen_session`).
+2. Enriquecer: `enrichFlow(flow)` — replay + snapshot + locators (data-role primero, luego todos los recomendados por Playwright).
+3. Fusionar en modelo canónico: `mergeEnrichedFlowIntoKnowledge(enrichedFlow)` y `writeKnowledgeBase(knowledge, outputDir)`.
+4. Generar test: `flowToPlaywrightTest(flow)` o POM: `generatePOM(knowledge)`.
+
+---
+
 ## Resumen de Flags Disponibles
 
 | Flag | Descripción | Valores | Sistema |
@@ -126,8 +171,9 @@ npm run explore flows/ecommerce-checkout.md --markdown-flow --mcp-enabled=true -
 | `--output-dir=` | Directorio de salida | Ruta (default: `./knowledge`) | Todos |
 | `--browser=` | Tipo de navegador | `chromium` / `firefox` / `webkit` | Todos |
 | `--markdown-flow` | Ejecutar como flujo Markdown | Flag booleano | Sistema 3 |
-| `--mcp-enabled=` | Habilitar MCP | `true` / `false` | Sistema 2, 3 |
-| `--mcp-port=` | Puerto del servidor MCP | Número (default: 8931) | Sistema 2, 3 |
+| `--explore-from-test` | Entrada = archivo test Playwright (.spec.ts) | Flag booleano | Sistema 4 |
+| `--mcp-enabled=` | Habilitar MCP | `true` / `false` | Sistema 2, 3, 4 |
+| `--mcp-port=` | Puerto del servidor MCP | Número (default: 8931) | Sistema 2, 3, 4 |
 
 ---
 
@@ -177,6 +223,9 @@ npm run dev examples/example-plan.md --mcp-enabled=true --mcp-port=8931
 
 # Sistema 3: Markdown Flow
 npm run dev flows/login.md --markdown-flow --mcp-enabled=true --mcp-port=8931
+
+# Sistema 4: Explore from test
+npm run explore-from-test -- e2e/login.spec.ts --headless=false
 ```
 
 ---
@@ -200,10 +249,10 @@ npm run dev flows/login.md --markdown-flow --mcp-enabled=true --mcp-port=8931
 
 ## Comparación Rápida
 
-| Característica | Sistema 1 | Sistema 2 | Sistema 3 |
-|----------------|-----------|-----------|------------|
-| **Entrada** | Plan estructurado | Plan estructurado | Prompts naturales |
-| **MCP** | No | Sí (opcional) | Sí (opcional) |
-| **Fallback** | N/A | Crawler automático | Crawler automático |
-| **Evidencia** | Sí | Sí | Sí |
-| **Uso** | Exploración estructurada | Exploración con AI | E2E desde texto |
+| Característica | Sistema 1 | Sistema 2 | Sistema 3 | Sistema 4 |
+|----------------|-----------|-----------|-----------|-----------|
+| **Entrada** | Plan estructurado | Plan estructurado | Prompts naturales | Test .spec.ts |
+| **MCP** | No | Sí (opcional) | Sí (opcional) | Sí (opcional) |
+| **Fallback** | N/A | Crawler automático | Crawler automático | Crawler automático |
+| **Evidencia** | Sí | Sí | Sí | Sí |
+| **Uso** | Exploración estructurada | Exploración con AI | E2E desde texto | Test como plan |

@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "node dist/exploration/runner.js",
     "dev": "tsx exploration/runner.ts",
-    "explore": "tsx exploration/runner.ts"
+    "explore": "tsx exploration/runner.ts",
+    "explore-from-test": "tsx exploration/runner.ts --explore-from-test"
   },
   "keywords": [
     "playwright",

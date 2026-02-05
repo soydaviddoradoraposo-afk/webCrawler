@@ -227,7 +227,13 @@ export type LocatorStrategy =
   | 'data-testid'
   | 'role-accessible-name'
   | 'aria-label'
-  | 'css-fallback';
+  | 'css-fallback'
+  | 'getByRole'
+  | 'getByLabel'
+  | 'getByPlaceholder'
+  | 'getByText'
+  | 'getByAltText'
+  | 'getByTitle';
 
 /**
  * A ranked locator candidate for an element.
@@ -276,6 +282,18 @@ export interface PageKnowledge {
 }
 
 /**
+ * API endpoint entry (from recording apiTraffic).
+ */
+export interface ApiEndpointEntry {
+  url: string;
+  method: string;
+  status?: number;
+  source: 'recording' | 'exploration-from-test';
+  sourceFlowId?: string;
+  timestamp: number;
+}
+
+/**
  * Complete knowledge base structure.
  */
 export interface KnowledgeBase {
@@ -290,6 +308,8 @@ export interface KnowledgeBase {
   pages: PageKnowledge[];
   /** Exploration run identifier */
   runId: string;
+  /** API endpoints / backends (from recording or exploration). */
+  apiEndpoints?: ApiEndpointEntry[];
 }
 
 /**

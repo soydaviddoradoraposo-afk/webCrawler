@@ -13,7 +13,8 @@
 
 import { chromium, Browser, Page, BrowserContext } from 'playwright';
 import { readFile } from 'fs/promises';
-import { ExplorationPlan, ExplorationResult, RunnerConfig, SafetyConstraints } from './types.js';
+import { ExplorationResult, RunnerConfig, SafetyConstraints } from './types.js';
+import type { MarkdownFlowResult } from './types.js';
 import { parseExplorationPlan } from './plan_parser.js';
 import { executeStep } from './step_executor.js';
 import { extractPageSnapshot } from './snapshot_extractor.js';
@@ -21,6 +22,7 @@ import { rankLocators } from './locator_ranker.js';
 import { MCPClient } from './mcp_client.js';
 import { saveEvidence } from './evidence_capture.js';
 import { runMarkdownFlow } from './mcp_markdown_runner.js';
+import { runExplorationFromTest } from './runner_test_entry.js';
 import {
   createKnowledgeBase,
   createPageKnowledge,
@@ -48,6 +50,8 @@ const DEFAULT_CONFIG: Required<Omit<RunnerConfig, 'mcpConfig' | 'evidenceOutputD
   mcpEnabled: false,
   evidenceOutputDir: './knowledge/evidence',
   captureEvidence: true,
+  enableMarkdownFlows: false,
+  markdownFlowConfig: undefined,
 };
 
 /**
@@ -247,6 +251,62 @@ export async function runExploration(
   }
 }
 
+const DEFAULT_SAFETY: SafetyConstraints = {
+  forbiddenActions: [],
+  forbiddenSelectors: [],
+  allowDestructiveForms: false,
+  allowDeleteButtons: false,
+};
+
+/**
+ * Run a Markdown flow file (launches browser, runs flow, returns result).
+ */
+export async function runMarkdownFlowFile(
+  flowPath: string,
+  config: RunnerConfig = {}
+): Promise<MarkdownFlowResult> {
+  const finalConfig = { ...DEFAULT_CONFIG, ...config };
+  let browser: Browser | null = null;
+  let context: BrowserContext | null = null;
+  let page: Page | null = null;
+  let mcpClient: MCPClient | undefined;
+
+  try {
+    browser = await chromium.launch({ headless: finalConfig.headless });
+    context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+    page = await context.newPage();
+    page.setDefaultTimeout(finalConfig.pageLoadTimeout);
+
+    if (finalConfig.mcpEnabled && finalConfig.mcpConfig) {
+      try {
+        mcpClient = new MCPClient();
+        await mcpClient.connect(
+          finalConfig.mcpConfig.transport,
+          finalConfig.mcpConfig,
+          page,
+          context
+        );
+      } catch (error) {
+        console.warn(`[Runner] MCP init failed: ${error}. Using crawler-only.`);
+        mcpClient = undefined;
+      }
+    }
+
+    return await runMarkdownFlow(flowPath, page, context, mcpClient, DEFAULT_SAFETY, finalConfig.markdownFlowConfig);
+  } finally {
+    if (mcpClient) {
+      try {
+        await mcpClient.closeSession();
+      } catch {
+        // ignore
+      }
+    }
+    if (page) await page.close().catch(() => {});
+    if (context) await context.close().catch(() => {});
+    if (browser) await browser.close().catch(() => {});
+  }
+}
+
 /**
  * Main entry point for CLI usage.
  */
@@ -254,17 +314,22 @@ export async function main(): Promise<void> {
   const args = process.argv.slice(2);
   
   if (args.length === 0) {
-    console.error('Usage: node runner.js <plan-path> [--headless=false] [--output-dir=./knowledge] [--markdown-flow]');
+    console.error('Usage: node runner.js <plan-path|test-path> [--headless=false] [--output-dir=./knowledge] [--markdown-flow] [--explore-from-test]');
     process.exit(1);
   }
 
   const planPath = args[0];
   const config: RunnerConfig = {};
   let isMarkdownFlow = false;
+  let isExploreFromTest = false;
 
   // Parse CLI arguments
   for (let i = 1; i < args.length; i++) {
     const arg = args[i];
+    if (arg === '--explore-from-test' || arg === '--from-test') {
+      isExploreFromTest = true;
+      continue;
+    }
     if (arg.startsWith('--headless=')) {
       config.headless = arg.split('=')[1] !== 'false';
     } else if (arg.startsWith('--output-dir=')) {
@@ -287,7 +352,10 @@ export async function main(): Promise<void> {
   }
 
   try {
-    if (isMarkdownFlow) {
+    if (isExploreFromTest) {
+      const result = await runExplorationFromTest(planPath, config);
+      process.exit(result.success ? 0 : 1);
+    } else if (isMarkdownFlow) {
       const result = await runMarkdownFlowFile(planPath, config);
       process.exit(result.success ? 0 : 1);
     } else {
