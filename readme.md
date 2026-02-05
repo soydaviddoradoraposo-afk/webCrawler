@@ -454,3 +454,18 @@ See `plans/templates/flow-from-markdown.md` for complete examples including:
 ## License
 
 MIT
+
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@executeautomation/playwright-mcp-server"]
+    },
+    "playwright-custom": {
+      "command": "node",
+      "args": [
+        "d:/workspace/UIframework/crawlerPW/mcp-playwright-temp/mcp-playwright/dist/index.js"
+      ]
+    }
+  }
+}
