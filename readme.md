@@ -45,6 +45,33 @@ The system follows strict separation of concerns:
 npm install
 ```
 
+## Quick Start - Comandos de Ejecución
+
+### Sistema 1: Exploración Tradicional (sin MCP)
+```bash
+npm run explore examples/example-plan.md
+```
+
+### Sistema 2: Exploración con MCP
+```bash
+# Terminal 1: Iniciar servidor MCP
+npx @executeautomation/playwright-mcp-server --port 8931
+
+# Terminal 2: Ejecutar con MCP
+npm run explore examples/example-plan.md --mcp-enabled=true --mcp-port=8931
+```
+
+### Sistema 3: Markdown Flow (prompts naturales)
+```bash
+# Con MCP
+npm run explore flows/login.md --markdown-flow --mcp-enabled=true --mcp-port=8931
+
+# Sin MCP (solo crawler)
+npm run explore flows/login.md --markdown-flow
+```
+
+**Ver [docs/comandos-ejecucion.md](docs/comandos-ejecucion.md) para documentación completa de comandos.**
+
 ## Usage
 
 ### 1. Create an Exploration Plan
@@ -106,16 +133,16 @@ Exploration plans are Markdown files with three main sections:
 - `Allow Delete Buttons`: Whether to allow delete button clicks
 
 ### Steps
-- `goto`: Navigate to URL
-- `click`: Click an element
-- `fill`: Fill an input field
-- `select`: Select dropdown option
-- `check`/`uncheck`: Toggle checkbox
-- `keyboard`: Send keyboard input
-- `hover`: Hover over element
-- `scroll`: Scroll to element or coordinates
-- `wait`: Wait for condition
-- `screenshot`: Capture screenshot
+- **Navigation**: `goto`, `go_back`, `go_forward`
+- **Interactions**: `click`, `fill`, `select`, `check`, `uncheck`, `keyboard`, `press_key`, `hover`, `drag`, `upload_file`
+- **Content**: `get_visible_text`, `get_visible_html`, `evaluate`
+- **Viewport**: `scroll`, `resize`, `screenshot`, `save_as_pdf`
+- **Tabs/iframes**: `click_and_switch_tab`, `iframe_click`, `iframe_fill`
+- **Other**: `wait`, `console_logs`, `custom_user_agent`, `expect_response`, `assert_response`
+- **API**: `api_get`, `api_post`, `api_put`, `api_patch`, `api_delete`
+- **Recording**: `start_codegen`, `end_codegen`, `get_codegen`, `clear_codegen`
+
+See [docs/mcp-integration.md](docs/mcp-integration.md) for the full list of MCP tools and parameters.
 
 **Execution Preferences:**
 - `[mcp-prefer]`: Try MCP first, fallback to crawler (default)
@@ -297,6 +324,118 @@ The deterministic crawler can run independently without MCP.
 2. Check disk space
 3. Review error logs for file system errors
 4. Ensure `captureEvidence: true` in config
+
+## Markdown Flow Execution
+
+The system supports executing E2E flows directly from Markdown files where each line is a natural language prompt.
+
+### Markdown Flow Format
+
+Create a Markdown file with one prompt per line:
+
+```markdown
+Navigate to https://example.com/login
+Fill the username field with 'testuser'
+Fill the password field with 'password123'
+Click the 'Login' button
+Wait for element with text 'Welcome'
+Take a screenshot
+```
+
+**Features:**
+- Each line is an independent prompt
+- Blank lines and comments (starting with `#`) are ignored
+- Sequential execution respecting file order
+- Automatic MCP execution with crawler fallback
+- Evidence capture per step
+
+**Metadata Syntax:**
+Add optional metadata per line:
+```markdown
+Click the 'Submit' button #evidence: true #timeout: 5000
+```
+
+### Running Markdown Flows
+
+**Via CLI:**
+```bash
+npm run explore flow.md --markdown-flow
+```
+
+**Via Code:**
+```typescript
+import { runMarkdownFlowFile } from './exploration/runner.js';
+
+const result = await runMarkdownFlowFile('./flows/login.md', {
+  mcpEnabled: true,
+  mcpConfig: {
+    transport: 'http',
+    httpPort: 8931,
+  },
+  markdownFlowConfig: {
+    stepTimeout: 30000,
+    retryCount: 1,
+    captureEvidencePerStep: true,
+    verbosity: 'normal',
+  },
+});
+```
+
+### Prompt Parsing
+
+The system uses two approaches:
+
+1. **MCP Prompt Execution** (primary):
+   - Sends prompt to MCP server
+   - MCP returns structured action (action, target, value)
+   - Executes via step_executor
+
+2. **Deterministic Parsing** (fallback):
+   - Heuristic-based prompt parsing
+   - Extracts action, target, and value from natural language
+   - Falls back automatically if MCP fails
+
+### Supported Prompt Patterns
+
+- **Navigation**: `Navigate to https://example.com` or `Go to https://example.com`
+- **Fill**: `Fill the username field with 'value'` or `Fill username with 'value'`
+- **Click**: `Click the 'Login' button` or `Click login button`
+- **Wait**: `Wait for element with text 'Welcome'`
+- **Screenshot**: `Take a screenshot` or `Screenshot`
+- **Hover**: `Hover over the menu item`
+- **Scroll**: `Scroll to the footer`
+
+### Configuration
+
+```typescript
+interface MarkdownFlowConfig {
+  stepTimeout?: number;        // Timeout per step (ms)
+  retryCount?: number;          // Retries per prompt
+  reuseSession?: boolean;       // Reuse MCP session
+  captureEvidencePerStep?: boolean;
+  verbosity?: 'minimal' | 'normal' | 'verbose';
+  defaultExecutionPreference?: 'mcp-prefer' | 'crawler-only' | 'mcp-only';
+}
+```
+
+### Evidence and Logging
+
+Each step captures:
+- Screenshot
+- HTML snapshot
+- Console logs
+- Execution path (MCP vs crawler)
+- Prompt text and parsed action
+
+Evidence is saved to `{evidenceOutputDir}/markdown-flow-{lineNumber}/`
+
+### Example Flow File
+
+See `plans/templates/flow-from-markdown.md` for complete examples including:
+- Login flows
+- Navigation flows
+- Form submissions
+- E-commerce flows
 
 ## Requirements
 

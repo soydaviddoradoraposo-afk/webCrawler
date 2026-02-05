@@ -34,7 +34,9 @@ import {
   executeScroll as crawlerScroll,
   executeWait as crawlerWait,
   executeScreenshot as crawlerScreenshot,
+  resolveSelector,
 } from './crawler_executor.js';
+import { captureEvidence } from './evidence_capture.js';
 
 /**
  * Execute a single exploration step using hybrid MCP + crawler approach.
@@ -171,7 +173,113 @@ async function executeWithMCP(
       return await mcpClient.scroll(scrollTarget);
 
     case 'screenshot':
-      return await mcpClient.screenshot(step.target || undefined);
+      return await mcpClient.screenshot(step.target ? { name: step.target, path: step.target } : undefined);
+
+    case 'select':
+      if (!step.value) return { success: false, error: 'Select action requires a value' };
+      return await mcpClient.select(step.target, step.value);
+
+    case 'check':
+      return await mcpClient.click(step.target); // MCP may not have check; use click as fallback for checkbox
+    case 'uncheck':
+      return await mcpClient.executeJS(`document.querySelector('${step.target.replace(/'/g, "\\'")}')?.click();` as string); // fallback: toggle
+
+    case 'keyboard':
+    case 'press_key': {
+      const key = step.key ?? step.value ?? 'Enter';
+      return await mcpClient.pressKey(key, step.target || undefined);
+    }
+
+    case 'drag': {
+      const [source, targetSel] = step.value ? [step.target, step.value] : step.target.includes(',') ? step.target.split(',').map(s => s.trim()) : [step.target, step.target];
+      if (!source || !targetSel) return { success: false, error: 'Drag action requires source and target selectors' };
+      return await mcpClient.drag(source, targetSel);
+    }
+
+    case 'upload_file':
+      if (!step.filePath) return { success: false, error: 'Upload action requires filePath' };
+      return await mcpClient.uploadFile(step.target, step.filePath);
+
+    case 'get_visible_text':
+      return await mcpClient.getVisibleText();
+    case 'get_visible_html':
+      return await mcpClient.getVisibleHtml(step.target ? { selector: step.target } : undefined);
+
+    case 'go_back':
+      return await mcpClient.goBack();
+    case 'go_forward':
+      return await mcpClient.goForward();
+
+    case 'resize':
+      if (step.resizeOptions) return await mcpClient.resize(step.resizeOptions);
+      if (step.target && step.value) {
+        const w = parseInt(step.target, 10);
+        const h = parseInt(step.value, 10);
+        if (!Number.isNaN(w) && !Number.isNaN(h)) return await mcpClient.resize({ width: w, height: h });
+      }
+      return { success: false, error: 'Resize action requires resizeOptions or width,height in target/value' };
+
+    case 'save_as_pdf':
+      if (!step.pdfOptions?.outputPath) return { success: false, error: 'Save_as_pdf requires pdfOptions.outputPath' };
+      return await mcpClient.saveAsPdf(step.pdfOptions);
+
+    case 'click_and_switch_tab':
+      return await mcpClient.clickAndSwitchTab(step.target);
+
+    case 'iframe_click':
+      if (!step.value) return { success: false, error: 'iframe_click requires selector (value) for inner element' };
+      return await mcpClient.iframeClick(step.target, step.value);
+    case 'iframe_fill':
+      if (!step.value) return { success: false, error: 'iframe_fill requires inner selector (value); use description for fill value' };
+      return await mcpClient.iframeFill(step.target, step.value, step.description ?? '');
+    case 'expect_response':
+      if (!step.responseId || !step.target) return { success: false, error: 'expect_response requires responseId and url (target)' };
+      return await mcpClient.expectResponse(step.responseId, step.target);
+    case 'assert_response':
+      if (!step.responseId) return { success: false, error: 'assert_response requires responseId' };
+      return await mcpClient.assertResponse(step.responseId, step.value);
+
+    case 'custom_user_agent':
+      return await mcpClient.setCustomUserAgent(step.target);
+
+    case 'console_logs':
+      return await mcpClient.getConsoleLogs(
+        step.consoleLogOptions as { type?: 'all' | 'error' | 'warning' | 'log' | 'info' | 'debug' | 'exception'; search?: string; limit?: number; clear?: boolean } | undefined
+      );
+
+    case 'api_get':
+      if (step.apiOptions) return await mcpClient.apiGet(step.apiOptions.url, { token: step.apiOptions.token, headers: step.apiOptions.headers });
+      return await mcpClient.apiGet(step.target, { token: step.value ? undefined : undefined, headers: undefined });
+    case 'api_post':
+      if (step.apiOptions) return await mcpClient.apiPost(step.apiOptions.url, step.apiOptions.value ?? '', { token: step.apiOptions.token, headers: step.apiOptions.headers });
+      if (!step.value) return { success: false, error: 'api_post requires body (value)' };
+      return await mcpClient.apiPost(step.target, step.value);
+    case 'api_put':
+      if (step.apiOptions) return await mcpClient.apiPut(step.apiOptions.url, step.apiOptions.value ?? '', { token: step.apiOptions.token, headers: step.apiOptions.headers });
+      if (!step.value) return { success: false, error: 'api_put requires body (value)' };
+      return await mcpClient.apiPut(step.target, step.value);
+    case 'api_patch':
+      if (step.apiOptions) return await mcpClient.apiPatch(step.apiOptions.url, step.apiOptions.value ?? '', { token: step.apiOptions.token, headers: step.apiOptions.headers });
+      if (!step.value) return { success: false, error: 'api_patch requires body (value)' };
+      return await mcpClient.apiPatch(step.target, step.value);
+    case 'api_delete':
+      if (step.apiOptions) return await mcpClient.apiDelete(step.apiOptions.url, { token: step.apiOptions.token, headers: step.apiOptions.headers });
+      return await mcpClient.apiDelete(step.target);
+
+    case 'start_codegen':
+      if (!step.codegenOptions?.outputPath) return { success: false, error: 'start_codegen requires codegenOptions.outputPath' };
+      return await mcpClient.startCodegenSession(step.codegenOptions);
+    case 'end_codegen':
+    case 'get_codegen':
+    case 'clear_codegen':
+      if (!step.sessionId) return { success: false, error: `${step.action} requires sessionId` };
+      if (step.action === 'end_codegen') return await mcpClient.endCodegenSession(step.sessionId);
+      if (step.action === 'get_codegen') return await mcpClient.getCodegenSession(step.sessionId);
+      return await mcpClient.clearCodegenSession(step.sessionId);
+
+    case 'evaluate':
+      if (!step.value) return { success: false, error: 'evaluate requires script (value)' };
+      return await mcpClient.executeJS(step.value);
 
     default:
       return { success: false, error: `MCP does not support action: ${step.action}` };
@@ -298,6 +406,116 @@ async function executeWithCrawler(
           evidence: screenshotResult.evidence,
         };
 
+      case 'press_key':
+        if (!step.key && !step.value) throw new Error('press_key requires key or value');
+        await page.keyboard.press(step.key ?? step.value ?? 'Enter');
+        return { step, success: true, executedAt: startTime };
+
+      case 'drag': {
+        const [src, tgt] = step.value ? [step.target, step.value] : step.target.includes(',') ? step.target.split(',').map(s => s.trim()) : [step.target, step.target];
+        if (!src || !tgt) throw new Error('Drag action requires source and target selectors');
+        const srcLoc = await resolveSelector(src, page);
+        const tgtLoc = await resolveSelector(tgt, page);
+        if (!srcLoc || !tgtLoc) throw new Error('Could not resolve drag source or target');
+        await srcLoc.dragTo(tgtLoc);
+        const evidence = await captureEvidence(page, context, 'drag', true);
+        return { step, success: true, executedAt: startTime, evidence };
+      }
+
+      case 'upload_file':
+        if (!step.filePath) throw new Error('upload_file requires filePath');
+        const uploadLoc = await resolveSelector(step.target, page);
+        if (!uploadLoc) throw new Error(`Could not resolve upload target: ${step.target}`);
+        await uploadLoc.setInputFiles(step.filePath);
+        const uploadEvidence = await captureEvidence(page, context, 'upload_file', true);
+        return { step, success: true, executedAt: startTime, evidence: uploadEvidence };
+
+      case 'go_back':
+        await page.goBack();
+        finalUrl = page.url();
+        pageTitle = await page.title();
+        return { step, success: true, finalUrl, pageTitle, executedAt: startTime };
+
+      case 'go_forward':
+        await page.goForward();
+        finalUrl = page.url();
+        pageTitle = await page.title();
+        return { step, success: true, finalUrl, pageTitle, executedAt: startTime };
+
+      case 'get_visible_text': {
+        const text = await page.evaluate(() => ((globalThis as unknown as { document?: { body?: { innerText?: string } } }).document?.body?.innerText) ?? '');
+        return { step, success: true, executedAt: startTime, evidence: { timestamp: new Date().toISOString(), action: 'get_visible_text', success: true, data: text } as any };
+      }
+      case 'get_visible_html': {
+        const html = await page.content();
+        const selector = step.target ? await page.locator(step.target).evaluate(el => el?.outerHTML).catch(() => html) : html;
+        const content = typeof selector === 'string' ? selector : html;
+        return { step, success: true, executedAt: startTime, evidence: { timestamp: new Date().toISOString(), action: 'get_visible_html', success: true, data: content } as any };
+      }
+
+      case 'resize': {
+        if (step.resizeOptions?.width != null && step.resizeOptions?.height != null) {
+          await page.setViewportSize({ width: step.resizeOptions.width, height: step.resizeOptions.height });
+        } else if (step.target && step.value) {
+          const w = parseInt(step.target, 10);
+          const h = parseInt(step.value, 10);
+          if (!Number.isNaN(w) && !Number.isNaN(h)) await page.setViewportSize({ width: w, height: h });
+        } else throw new Error('resize requires resizeOptions (width/height) or target,value as dimensions');
+        const resizeEvidence = await captureEvidence(page, context, 'resize', true);
+        return { step, success: true, executedAt: startTime, evidence: resizeEvidence };
+      }
+
+      case 'save_as_pdf': {
+        const outPath = step.pdfOptions?.outputPath ?? step.target;
+        const filename = step.pdfOptions?.filename ?? 'page.pdf';
+        const fullPath = `${outPath}/${filename}`.replace(/\/+/g, '/');
+        await page.pdf({ path: fullPath, format: step.pdfOptions?.format as 'A4' | 'Letter' | undefined, printBackground: step.pdfOptions?.printBackground });
+        return { step, success: true, executedAt: startTime };
+      }
+
+      case 'click_and_switch_tab': {
+        const loc = await resolveSelector(step.target, page);
+        if (!loc) throw new Error(`Could not resolve selector for: ${step.target}`);
+        const [popup] = await Promise.all([page.waitForEvent('popup'), loc.click()]);
+        if (popup) await popup.bringToFront();
+        finalUrl = page.url();
+        pageTitle = await page.title();
+        return { step, success: true, finalUrl, pageTitle, executedAt: startTime };
+      }
+
+      case 'iframe_click': {
+        const frame = page.frameLocator(step.target);
+        const inner = step.value ? frame.locator(step.value) : frame.locator('body');
+        await inner.click();
+        return { step, success: true, executedAt: startTime };
+      }
+      case 'iframe_fill': {
+        if (!step.value) throw new Error('iframe_fill requires inner selector (value)');
+        const frameFill = page.frameLocator(step.target);
+        await frameFill.locator(step.value).fill(step.description ?? '');
+        return { step, success: true, executedAt: startTime };
+      }
+
+      case 'evaluate':
+        if (!step.value) throw new Error('evaluate requires script (value)');
+        await page.evaluate(step.value);
+        return { step, success: true, executedAt: startTime };
+
+      case 'custom_user_agent':
+      case 'console_logs':
+      case 'expect_response':
+      case 'assert_response':
+      case 'api_get':
+      case 'api_post':
+      case 'api_put':
+      case 'api_patch':
+      case 'api_delete':
+      case 'start_codegen':
+      case 'end_codegen':
+      case 'get_codegen':
+      case 'clear_codegen':
+        throw new Error(`Action "${step.action}" has no crawler fallback; use MCP or omit this step.`);
+
       default:
         throw new Error(`Unsupported action: ${step.action}`);
     }
@@ -389,104 +607,6 @@ async function executeGoto(page: Page, step: ExplorationStep): Promise<void> {
     waitUntil: 'domcontentloaded',
     timeout: 30000,
   });
-}
-
-/**
- * Execute click action using auto-playwright for selector resolution.
- * 
- * NOTE: This implementation uses a multi-strategy locator approach following
- * the locator priority rules. In production, auto-playwright should be integrated
- * here to resolve selectors using AI, but the actual interaction execution
- * should still use Playwright's native methods for determinism.
- * 
- * Example auto-playwright integration:
- * ```typescript
- * import { auto } from 'auto-playwright';
- * const resolvedLocator = await auto.resolveSelector(page, step.target);
- * await resolvedLocator.click();
- * ```
- */
-async function executeClick(
-  page: Page,
-  step: ExplorationStep,
-  safety: SafetyConstraints
-): Promise<void> {
-  // Multi-strategy locator resolution following priority rules:
-  // 1. data-role, 2. data-testid, 3. role+name, 4. aria-label, 5. CSS fallback
-  
-  // Try multiple locator strategies
-  const locators = [
-    () => page.locator(`[data-role="${step.target}"]`),
-    () => page.locator(`[data-testid="${step.target}"]`),
-    () => page.getByRole('button', { name: step.target }),
-    () => page.getByRole('link', { name: step.target }),
-    () => page.getByLabel(step.target),
-    () => page.locator(step.target), // CSS fallback
-  ];
-
-  let clicked = false;
-  for (const locatorFn of locators) {
-    try {
-      const locator = locatorFn();
-      const isVisible = await locator.isVisible({ timeout: 2000 }).catch(() => false);
-      
-      if (isVisible) {
-        await locator.click({ timeout: 5000 });
-        clicked = true;
-        break;
-      }
-    } catch (error) {
-      // Try next locator strategy
-      continue;
-    }
-  }
-
-  if (!clicked) {
-    throw new Error(
-      `Could not find clickable element matching target: ${step.target}. ` +
-      'Tried multiple locator strategies.'
-    );
-  }
-}
-
-/**
- * Execute fill action.
- */
-async function executeFill(page: Page, step: ExplorationStep): Promise<void> {
-  if (!step.value) {
-    throw new Error('Fill action requires a value');
-  }
-
-  const locators = [
-    () => page.locator(`[data-role="${step.target}"]`),
-    () => page.locator(`[data-testid="${step.target}"]`),
-    () => page.getByLabel(step.target),
-    () => page.locator(`input[name="${step.target}"]`),
-    () => page.locator(`textarea[name="${step.target}"]`),
-    () => page.locator(step.target),
-  ];
-
-  let filled = false;
-  for (const locatorFn of locators) {
-    try {
-      const locator = locatorFn();
-      const isVisible = await locator.isVisible({ timeout: 2000 }).catch(() => false);
-      
-      if (isVisible) {
-        await locator.fill(step.value, { timeout: 5000 });
-        filled = true;
-        break;
-      }
-    } catch (error) {
-      continue;
-    }
-  }
-
-  if (!filled) {
-    throw new Error(
-      `Could not find fillable element matching target: ${step.target}`
-    );
-  }
 }
 
 /**

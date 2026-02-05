@@ -7,8 +7,9 @@
 
 /**
  * Supported action types in exploration plans.
+ * Includes browser automation, device testing, API automation, and recording.
  */
-export type ActionType = 
+export type ActionType =
   | 'goto'
   | 'click'
   | 'fill'
@@ -19,7 +20,33 @@ export type ActionType =
   | 'hover'
   | 'scroll'
   | 'wait'
-  | 'screenshot';
+  | 'screenshot'
+  | 'drag'
+  | 'upload_file'
+  | 'press_key'
+  | 'go_back'
+  | 'go_forward'
+  | 'get_visible_text'
+  | 'get_visible_html'
+  | 'resize'
+  | 'save_as_pdf'
+  | 'click_and_switch_tab'
+  | 'iframe_click'
+  | 'iframe_fill'
+  | 'expect_response'
+  | 'assert_response'
+  | 'custom_user_agent'
+  | 'console_logs'
+  | 'api_get'
+  | 'api_post'
+  | 'api_put'
+  | 'api_patch'
+  | 'api_delete'
+  | 'start_codegen'
+  | 'end_codegen'
+  | 'get_codegen'
+  | 'clear_codegen'
+  | 'evaluate';
 
 /**
  * Keyboard action key types.
@@ -36,6 +63,46 @@ export type KeyboardKey =
   | 'End'
   | 'PageUp'
   | 'PageDown';
+
+/**
+ * Device preset or manual viewport for resize actions.
+ */
+export interface ResizeOptions {
+  /** Device preset (e.g. 'iPhone 13', 'iPad Pro 11', 'Desktop Chrome') */
+  device?: string;
+  /** Orientation when using device preset */
+  orientation?: 'portrait' | 'landscape';
+  /** Viewport width in pixels (manual mode) */
+  width?: number;
+  /** Viewport height in pixels (manual mode) */
+  height?: number;
+}
+
+/**
+ * Options for API automation (HTTP request).
+ */
+export interface ApiRequestOptions {
+  /** Request URL */
+  url: string;
+  /** Request body (for POST/PUT/PATCH) */
+  value?: string;
+  /** Bearer token for Authorization header */
+  token?: string;
+  /** Additional headers */
+  headers?: Record<string, string>;
+}
+
+/**
+ * Code generation / recording session options.
+ */
+export interface CodegenSessionOptions {
+  /** Directory path where generated tests will be saved (absolute path) */
+  outputPath: string;
+  /** Prefix for generated test names (default: 'GeneratedTest') */
+  testNamePrefix?: string;
+  /** Include descriptive comments in generated tests */
+  includeComments?: boolean;
+}
 
 /**
  * A single step in an exploration plan.
@@ -57,6 +124,26 @@ export interface ExplorationStep {
   waitFor?: 'navigation' | 'networkidle' | 'load' | 'domcontentloaded';
   /** Execution preference: mcp-prefer (try MCP first), crawler-only, mcp-only */
   executionPreference?: 'mcp-prefer' | 'crawler-only' | 'mcp-only';
+  /** For drag: source selector (target = source, value or extra = target selector). Stored as target=source, value=targetSelector */
+  /** For iframe_click/iframe_fill: iframe CSS selector (target = iframe, value or extra = inner selector). Stored as target=iframeSelector, value=selector */
+  /** For resize: use resizeOptions */
+  resizeOptions?: ResizeOptions;
+  /** For API actions: request options */
+  apiOptions?: ApiRequestOptions;
+  /** For codegen: session options (start_codegen) or sessionId (end_codegen, get_codegen, clear_codegen) */
+  codegenOptions?: CodegenSessionOptions;
+  /** Session ID for codegen get/end/clear */
+  sessionId?: string;
+  /** Console log filter: type (all, error, warning, log, info, debug, exception), search, limit, clear */
+  consoleLogOptions?: { type?: string; search?: string; limit?: number; clear?: boolean };
+  /** For expect_response/assert_response: unique id and optional url/value */
+  responseId?: string;
+  /** File path for upload_file (absolute path) */
+  filePath?: string;
+  /** Screenshot/PDF options */
+  screenshotOptions?: { name?: string; fullPage?: boolean; selector?: string };
+  /** PDF options for save_as_pdf */
+  pdfOptions?: { outputPath: string; filename?: string; format?: string; printBackground?: boolean; margin?: { top?: string; right?: string; bottom?: string; left?: string } };
 }
 
 /**
@@ -269,6 +356,84 @@ export interface RunnerConfig {
   evidenceOutputDir?: string;
   /** Whether to capture evidence for each step */
   captureEvidence?: boolean;
+  /** Whether Markdown flow execution is enabled */
+  enableMarkdownFlows?: boolean;
+  /** Markdown flow configuration */
+  markdownFlowConfig?: MarkdownFlowConfig;
+}
+
+/**
+ * Configuration for Markdown flow execution.
+ */
+export interface MarkdownFlowConfig {
+  /** Default timeout per step (milliseconds) */
+  stepTimeout?: number;
+  /** Retry count per prompt */
+  retryCount?: number;
+  /** Whether to reuse MCP session across steps */
+  reuseSession?: boolean;
+  /** Default evidence capture per step */
+  captureEvidencePerStep?: boolean;
+  /** Logging verbosity */
+  verbosity?: 'minimal' | 'normal' | 'verbose';
+  /** Default execution preference (MCP vs crawler) */
+  defaultExecutionPreference?: 'mcp-prefer' | 'crawler-only' | 'mcp-only';
+}
+
+/**
+ * Result of executing a prompt from Markdown flow.
+ */
+export interface MarkdownFlowStepResult {
+  /** Line number in Markdown file */
+  lineNumber: number;
+  /** Original prompt text */
+  prompt: string;
+  /** Whether step succeeded */
+  success: boolean;
+  /** Error message if failed */
+  error?: string;
+  /** Execution path used */
+  executionPath?: 'mcp' | 'crawler';
+  /** Captured evidence */
+  evidence?: Evidence;
+  /** Evidence file paths */
+  evidencePaths?: string[];
+  /** Timestamp of execution */
+  executedAt: string;
+  /** Duration in milliseconds */
+  duration: number;
+  /** MCP error if MCP was attempted */
+  mcpError?: string;
+  /** Parsed action from prompt (if available) */
+  parsedAction?: {
+    action: ActionType;
+    target: string;
+    value?: string;
+  };
+}
+
+/**
+ * Result of executing a complete Markdown flow.
+ */
+export interface MarkdownFlowResult {
+  /** Flow file path */
+  flowPath: string;
+  /** Total steps executed */
+  totalSteps: number;
+  /** Successful steps */
+  successfulSteps: number;
+  /** Failed steps */
+  failedSteps: number;
+  /** Step results */
+  stepResults: MarkdownFlowStepResult[];
+  /** Overall success status */
+  success: boolean;
+  /** Errors encountered */
+  errors: string[];
+  /** Timestamp of flow execution */
+  executedAt: string;
+  /** Total duration in milliseconds */
+  totalDuration: number;
 }
 
 /**

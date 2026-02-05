@@ -111,7 +111,7 @@ const result = await mcpClient.scroll({ x: 0, y: 500 });
 #### Screenshot
 
 ```typescript
-const result = await mcpClient.screenshot('./screenshot.png');
+const result = await mcpClient.screenshot({ name: 'step1', fullPage: true });
 ```
 
 #### Execute JavaScript
@@ -120,6 +120,62 @@ const result = await mcpClient.screenshot('./screenshot.png');
 const result = await mcpClient.executeJS('document.title');
 console.log('Page title:', result.data);
 ```
+
+### Supported MCP Tools (Complete List)
+
+All tools from `@executeautomation/playwright-mcp-server` are integrated. Use the MCP client when connected; steps fall back to the crawler when MCP is unavailable or fails.
+
+#### Browser automation
+| Method | Description |
+|--------|-------------|
+| `navigate(url, options?)` | Navigate to URL (options: waitUntil, browserType, width, height, timeout, headless) |
+| `click(selector)` | Click element by CSS selector |
+| `fill(selector, value)` | Fill input field |
+| `select(selector, value)` | Select option in `<select>` |
+| `hover(selector)` | Hover over element |
+| `scroll(target)` | Scroll to selector or `{ x, y }` |
+| `screenshot(options?)` | Capture screenshot (name, selector, fullPage, etc.) |
+| `executeJS(code)` | Run JavaScript in page (tool: playwright_evaluate) |
+| `pressKey(key, selector?)` | Press keyboard key |
+| `drag(sourceSelector, targetSelector)` | Drag element to target |
+| `uploadFile(selector, filePath)` | Upload file to `input[type="file"]` |
+| `getVisibleText()` | Get visible text of the page |
+| `getVisibleHtml(options?)` | Get HTML (optional selector, removeScripts, cleanHtml, etc.) |
+| `goBack()` | Navigate back in history |
+| `goForward()` | Navigate forward in history |
+| `saveAsPdf(options)` | Save page as PDF (outputPath, filename, format, margin) |
+| `clickAndSwitchTab(selector)` | Click link and switch to new tab |
+| `iframeClick(iframeSelector, selector)` | Click element inside iframe |
+| `iframeFill(iframeSelector, selector, value)` | Fill input inside iframe |
+| `getConsoleLogs(options?)` | Get browser console logs (type, search, limit, clear) |
+| `setCustomUserAgent(userAgent)` | Set custom User-Agent |
+| `expectResponse(id, url)` | Start waiting for HTTP response |
+| `assertResponse(id, value?)` | Wait and validate response from expectResponse |
+| `closeBrowser()` | Close browser and release resources |
+
+#### Device testing
+| Method | Description |
+|--------|-------------|
+| `resize(options)` | Resize viewport: `{ device? }` (e.g. 'iPhone 13', 'Desktop Chrome') or `{ width?, height? }`, optional `orientation` |
+
+#### API automation
+| Method | Description |
+|--------|-------------|
+| `apiGet(url, options?)` | HTTP GET (options: token, headers) |
+| `apiPost(url, value, options?)` | HTTP POST with body |
+| `apiPut(url, value, options?)` | HTTP PUT |
+| `apiPatch(url, value, options?)` | HTTP PATCH |
+| `apiDelete(url, options?)` | HTTP DELETE |
+
+#### Recording (code generation)
+| Method | Description |
+|--------|-------------|
+| `startCodegenSession(options)` | Start recording session (outputPath, testNamePrefix?, includeComments?) |
+| `endCodegenSession(sessionId)` | End session and generate test file |
+| `getCodegenSession(sessionId)` | Get session info |
+| `clearCodegenSession(sessionId)` | Clear session without generating |
+
+**Crawler fallback:** Actions such as `api_*`, codegen, `expect_response`, `assert_response`, `custom_user_agent`, and `console_logs` have no crawler implementation; use MCP or omit those steps when running without MCP.
 
 ### Evidence Capture
 

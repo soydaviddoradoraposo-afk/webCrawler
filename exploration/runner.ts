@@ -13,13 +13,14 @@
 
 import { chromium, Browser, Page, BrowserContext } from 'playwright';
 import { readFile } from 'fs/promises';
-import { ExplorationPlan, ExplorationResult, RunnerConfig } from './types.js';
+import { ExplorationPlan, ExplorationResult, RunnerConfig, SafetyConstraints } from './types.js';
 import { parseExplorationPlan } from './plan_parser.js';
 import { executeStep } from './step_executor.js';
 import { extractPageSnapshot } from './snapshot_extractor.js';
 import { rankLocators } from './locator_ranker.js';
 import { MCPClient } from './mcp_client.js';
 import { saveEvidence } from './evidence_capture.js';
+import { runMarkdownFlow } from './mcp_markdown_runner.js';
 import {
   createKnowledgeBase,
   createPageKnowledge,
@@ -253,12 +254,13 @@ export async function main(): Promise<void> {
   const args = process.argv.slice(2);
   
   if (args.length === 0) {
-    console.error('Usage: node runner.js <plan-path> [--headless=false] [--output-dir=./knowledge]');
+    console.error('Usage: node runner.js <plan-path> [--headless=false] [--output-dir=./knowledge] [--markdown-flow]');
     process.exit(1);
   }
 
   const planPath = args[0];
   const config: RunnerConfig = {};
+  let isMarkdownFlow = false;
 
   // Parse CLI arguments
   for (let i = 1; i < args.length; i++) {
@@ -272,12 +274,26 @@ export async function main(): Promise<void> {
       if (['chromium', 'firefox', 'webkit'].includes(browserType)) {
         config.browserType = browserType as 'chromium' | 'firefox' | 'webkit';
       }
+    } else if (arg === '--markdown-flow' || arg === '--md-flow') {
+      isMarkdownFlow = true;
+    } else if (arg.startsWith('--mcp-enabled=')) {
+      config.mcpEnabled = arg.split('=')[1] === 'true';
+    } else if (arg.startsWith('--mcp-port=')) {
+      if (!config.mcpConfig) {
+        config.mcpConfig = { transport: 'http' };
+      }
+      config.mcpConfig.httpPort = parseInt(arg.split('=')[1]);
     }
   }
 
   try {
-    const result = await runExploration(planPath, config);
-    process.exit(result.success ? 0 : 1);
+    if (isMarkdownFlow) {
+      const result = await runMarkdownFlowFile(planPath, config);
+      process.exit(result.success ? 0 : 1);
+    } else {
+      const result = await runExploration(planPath, config);
+      process.exit(result.success ? 0 : 1);
+    }
   } catch (error) {
     console.error('Fatal error:', error);
     process.exit(1);
